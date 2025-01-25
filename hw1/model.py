@@ -73,6 +73,11 @@ def featurize(sentence: str, embeddings: gensim.models.keyedvectors.KeyedVectors
     # None - if the vector sequence is empty, i.e. the sentence is empty or None of the words in the sentence is in the embedding vocabulary
     # A torch tensor of shape (embed_dim,) - the average word embedding of the sentence
     # Hint: follow the hints in the pdf description
+    if not vectors:
+        return None
+    
+    average_embedding = np.mean(vectors, axis=0)
+    return torch.from_numpy(average_embedding)
 
 
 def create_tensor_dataset(raw_data: Dict[str, List[Union[int, str]]],
@@ -82,6 +87,13 @@ def create_tensor_dataset(raw_data: Dict[str, List[Union[int, str]]],
 
         # TODO: complete the for loop to featurize each sentence
         # only add the feature and label to the list if the feature is not None
+        feature = featurize(text, embeddings)
+        
+        if feature is None:
+            continue
+
+        all_features.append(feature)
+        all_labels.append(label)
 
         # your code ends here
 
@@ -114,7 +126,7 @@ class SentimentClassifier(nn.Module):
 
         # TODO: define the linear layer
         # Hint: follow the hints in the pdf description
-
+        self.linear_layer = nn.Linear(embed_dim, num_classes)
         # your code ends here
 
         self.loss = nn.CrossEntropyLoss(reduction='mean')
@@ -122,9 +134,8 @@ class SentimentClassifier(nn.Module):
     def forward(self, inp):
         # TODO: complete the forward function
         # Hint: follow the hints in the pdf description
-
+        logits = self.linear_layer(inp)
         # your code ends here
-
         return logits
 
 
@@ -139,8 +150,10 @@ def accuracy(logits: torch.FloatTensor, labels: torch.LongTensor) -> torch.Float
     # Hint: follow the hints in the pdf description, the return should be a tensor of 0s and 1s with the same shape as labels
     # labels is a tensor of shape (batch_size,)
     # logits is a tensor of shape (batch_size, num_classes)
+    preds = torch.argmax(logits, dim=1)
+    corrections = (preds == labels)
 
-    return ...
+    return corrections.float()
 
 
 def evaluate(model: SentimentClassifier, eval_dataloader: DataLoader) -> Tuple[float, float]:
